@@ -1,6 +1,6 @@
 # SummaTRIZ
 
-This code is for ICMLA 2020 paper SummaTRIZ: Summarization Networks for Mining Patent Contradiction
+This code is for ICMLA 2020 paper *SummaTRIZ: Summarization Networks for Mining Patent Contradiction
 
 ## 1) Download Dataset
 
