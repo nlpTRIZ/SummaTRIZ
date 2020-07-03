@@ -142,8 +142,7 @@ class Trainer(object):
         while step <= train_steps:
 
             reduce_counter = 0
-            self.test(test_iter, step)
-            sys.exit()
+            
 
             for i, batch in enumerate(train_iter):
                 if self.n_gpu == 0 or (i % self.n_gpu == self.gpu_rank):
@@ -175,77 +174,13 @@ class Trainer(object):
                             self.validate(valid_iter, step)
                             self.test(test_iter, step)
                             test_iter = test_iter_fct()
-                            # self.model.train()
                             valid_iter = valid_iter_fct()
+                            self.model.train()
 
                         step += 1
                         if step > train_steps:
                             break
             
-            #################################################################################################
-            #Save train and test data to compare classifiers
-            if self.args.save_data:
-
-                _,list_save_representations_test = self.test(test_iter, step)
-                self.model.train()
-
-                train_length=[]
-                test_length=[]
-
-                for length in list_save_representations[1]:
-                    train_length.append(len(length))
-
-                print(train_length)
-
-                for length in list_save_representations_test[1]:
-                    test_length.append(len(length))
-                    print(length)
-
-                print(test_length)
-
-              
-                
-                for i,srrc in enumerate(list_save_representations[0]):
-                    if i==0:
-                        src_final = srrc
-                    else:
-                        src_final=np.concatenate((src_final,srrc),axis=0)
-
-                for i,labell in enumerate(list_save_representations[1]):
-                    if i==0:
-                        label_final = labell
-                    else:
-                        label_final=np.concatenate((label_final,labell),axis=0)
-
-                for i,srrc in enumerate(list_save_representations_test[0]):
-                    if i==0:
-                        src_final_test = srrc
-                    else:
-                        src_final_test=np.concatenate((src_final_test,srrc),axis=0)
-
-                for i,labell in enumerate(list_save_representations_test[1]):
-                    if i==0:
-                        label_final_test = labell
-                    else:
-                        label_final_test=np.concatenate((label_final_test,labell),axis=0)
-
-                print(label_final_test.shape)
-                print(src_final_test.shape)
-                print(label_final.shape)
-                print(src_final.shape)
-
-                # np.save('/home/guillaume/Documents/test_classifiers/train_data.npy', src_final)
-                # np.save('/home/guillaume/Documents/test_classifiers/train_label.npy', label_final)
-
-                # np.save('/home/guillaume/Documents/test_classifiers/test_data.npy', src_final_test)
-                # np.save('/home/guillaume/Documents/test_classifiers/test_label.npy', label_final_test)
-
-
-                np.save('/home/guillaume/Documents/test_classifiers/test_data_length.npy', np.array(test_length))
-
-                sys.exit()
-            ##################################################################################################    
-
             train_iter = train_iter_fct()
 
         return total_stats
@@ -297,10 +232,7 @@ class Trainer(object):
             
                 sent_scores, mask, sentences_rep= self.model(src, segs, clss, mask, mask_cls)
 
-                if self.args.save_data:
-                    list_save_representations[1].append(labels.squeeze().cpu().numpy())
-                    list_save_representations[0].append(sentences_rep.squeeze().detach().cpu().numpy())
-
+    
                 # Computation true positive
                 #####################################################
                 scores = (sent_scores*mask.float()).cpu().data.numpy()
@@ -388,258 +320,140 @@ class Trainer(object):
 
 
 
-    # def test(self, test_iter, step=0):
-    #     """ Validate model.
-    #         test_iter: validate data iterator
-    #     Returns:
-    #         :obj:`nmt.Statistics`: validation loss statistics
-    #     """
-    #     # Set model in validating mode.
-    #     self.model.eval()
-    #     stats = Statistics()
-    #     list_save_representations=[[] for i in range(2)]
-
-    #     true_positives = 0
-    #     true_positives_margin =0
-    #     true_positives_margin2 =0
-    #     total_positives = 0
-
-    #     with torch.no_grad():
-
-    #         probas_tp = np.empty((0))
-    #         probas_fp = np.empty((0))
-    #         probas_fn = np.empty((0))
-
-    #         sent_tp = []
-    #         sent_fp = []
-    #         sent_fn = []
-
-    #         pos_labels = []
-    #         count = 0
-
-    #         # with open("list1.txt", "rb") as fp:   # Unpickling
-    #         #     list1 = pickle.load(fp)
-
-    #         # list1 = [min(list1[i]) for i in range(len(list1))]
-
-
-    #         for batch in test_iter:
-    #             src = batch.src
-    #             labels = batch.src_sent_labels
-    #             segs = batch.segs
-    #             clss = batch.clss
-    #             mask = batch.mask_src
-    #             mask_cls = batch.mask_cls
-    #             src_str = batch.src_str
-                
-            
-    #             sent_scores, mask, sentences_rep= self.model(src, segs, clss, mask, mask_cls)
-
-    #             if self.args.save_data:
-    #                 list_save_representations[1].append(labels.squeeze().cpu().numpy())
-    #                 list_save_representations[0].append(sentences_rep.squeeze().detach().cpu().numpy())
-
-    #             # Computation true positive
-    #             #####################################################
-    #             scores = (sent_scores*mask.float()).cpu().data.numpy()
-                
-
-    #             for i,label in enumerate(labels.cpu().data.numpy()):
-    #                 pos_label = np.where(label==1)
-    #                 # pos_labels.append(list(pos_label[0]))
-    #                 pos_score = np.argsort(scores[i])
-
-    #                 src = src_str[i]
-                    
-    #                 for pos in range(len(pos_label[0])+2):
-    #                     if (pos_score[-(pos+1)] in pos_label[0]):
-    #                         true_positives_margin+=1
-
-    #                 # for pos in range(len(pos_label[0])+4):
-    #                 #     if (pos_score[-(pos+1)] in pos_label[0]):
-    #                 #         true_positives_margin2+=1
-
-    #                 pos_positives = pos_score[-len(pos_label[0]):]
-    #                 pos_groundtruth = pos_label[0]
-    #                 probas_fn = np.append(probas_fn,scores[i][np.setdiff1d(pos_groundtruth, pos_positives)],axis=0)
-                    
-                    
-    #                 for index in list(np.setdiff1d(pos_groundtruth, pos_positives)):
-    #                     sent_fn.append(src[index])
-                
-    #                 for pos in range(len(pos_label[0])):
-    #                     # if (pos_score[-(pos+1)] < list1[i]):
-    #                     #     count += 1
-    #                     if (pos_score[-(pos+1)] in pos_label[0]):
-    #                         true_positives+=1
-    #                         probas_tp = np.append(probas_tp,[scores[i][pos_score[-(pos+1)]]],axis=0)
-    #                         sent_tp.append(src[pos_score[-(pos+1)]])
-    #                     else:
-    #                         probas_fp = np.append(probas_fp,[scores[i][pos_score[-(pos+1)]]],axis=0)
-    #                         sent_fp.append(src[pos_score[-(pos+1)]])
-
-    #                 total_positives+=len(pos_label[0])
-                
-    #             #####################################################
-                
-    #             loss = self.loss(sent_scores, labels.float())
-    #             loss = (loss * mask.float()).sum()
-    #             batch_stats = Statistics(float(loss.cpu().data.numpy()), len(labels))
-    #             stats.update(batch_stats)
-
-    #         # print(pos_labels)
-    #         # print(count)
-
-    #         # with open("list1.txt", "wb") as fp:
-    #         #     pickle.dump(pos_labels, fp)
-
-    #         print("true positives",true_positives)
-    #         print("true positives_margin2",true_positives_margin)
-    #         # print("true positives_margin4",true_positives_margin2)
-    #         print("total positives",total_positives)
-    #         # print("probas tp",probas_tp)
-    #         # print("probas fp",probas_fp)
-    #         # print("probas fn",probas_fn)
-    #         # print("sent_tp",len(sent_tp))
-    #         # print("sent_fp",len(sent_fp))
-    #         # print("sent_fn",len(sent_fn))
-
-    #         dict_data = {
-    #         "probas_tp": probas_tp,
-    #         "probas_fp": probas_fp,
-    #         "probas_fn": probas_fn,
-    #         "sent_tp": sent_tp,
-    #         "sent_fp": sent_fp,
-    #         "sent_fn": sent_fn
-    #         }
-            
-    #         loss = stats.xent()
-    #         if loss < self.init_loss:
-    #             # np.save('../logs/dict_data_'+str(loss)+'.npy', dict_data)
-    #             # if self.init_loss!= 100:
-    #             #     os.remove('../dict_data_'+str(self.init_loss)+'.npy') 
-    #             self.init_loss = loss
-
-    #         self._report_step(0, step, valid_stats=stats)
-
-    #         return stats, list_save_representations
-
-
-
-    def test(self, test_iter, step, cal_lead=False, cal_oracle=False):
+    def test(self, test_iter, step=0):
         """ Validate model.
-            valid_iter: validate data iterator
+            test_iter: validate data iterator
         Returns:
             :obj:`nmt.Statistics`: validation loss statistics
         """
-
         # Set model in validating mode.
-        def _get_ngrams(n, text):
-            ngram_set = set()
-            text_length = len(text)
-            max_index_ngram_start = text_length - n
-            for i in range(max_index_ngram_start + 1):
-                ngram_set.add(tuple(text[i:i + n]))
-            return ngram_set
-
-        def _block_tri(c, p):
-            tri_c = _get_ngrams(6, c.split())
-            for s in p:
-                tri_s = _get_ngrams(6, s.split())
-                if len(tri_c.intersection(tri_s)) > 0:
-                    return True
-            return False
-
-        if (not cal_lead and not cal_oracle):
-            self.model.eval()
+        self.model.eval()
         stats = Statistics()
+        list_save_representations=[[] for i in range(2)]
 
-        can_path = '%s_step%d.candidate' % (self.args.result_path, step)
-        gold_path = '%s_step%d.gold' % (self.args.result_path, step)
-        source_path = '%s_step%d.source' % (self.args.result_path, step)
-        with open(can_path, 'w') as save_pred:
-            with open(gold_path, 'w') as save_gold:
-                with open(source_path, 'w') as save_source:
-                    with torch.no_grad():
-                        for batch in test_iter:
-                            src = batch.src
-                            labels = batch.src_sent_labels
-                            segs = batch.segs
-                            clss = batch.clss
-                            mask = batch.mask_src
-                            mask_cls = batch.mask_cls
-                            src_txt = batch.src_str
-                            gold = []
-                            pred = []
+        true_positives = 0
+        true_positives_margin =0
+        true_positives_margin2 =0
+        total_positives = 0
+
+        with torch.no_grad():
+
+            probas_tp = np.empty((0))
+            probas_fp = np.empty((0))
+            probas_fn = np.empty((0))
+
+            sent_tp = []
+            sent_fp = []
+            sent_fn = []
+
+            pos_labels = []
+            count = 0
+
+            # with open("list1.txt", "rb") as fp:   # Unpickling
+            #     list1 = pickle.load(fp)
+
+            # list1 = [min(list1[i]) for i in range(len(list1))]
 
 
-                            if (cal_lead):
-                                selected_ids = [list(range(batch.clss.size(1)))] * batch.batch_size
-                            elif (cal_oracle):
-                                selected_ids = [[j for j in range(batch.clss.size(1)) if labels[i][j] == 1] for i in
-                                                range(batch.batch_size)]
-                            else:
-                                sent_scores, mask,_ = self.model(src, segs, clss, mask, mask_cls)
-                                loss = self.loss(sent_scores, labels.float())
-                                loss = (loss * mask.float()).sum()
-                                batch_stats = Statistics(float(loss.cpu().data.numpy()), len(labels))
-                                stats.update(batch_stats)
-                                # print(sent_scores)
+            for batch in test_iter:
+                src = batch.src
+                labels = batch.src_sent_labels
+                segs = batch.segs
+                clss = batch.clss
+                mask = batch.mask_src
+                mask_cls = batch.mask_cls
+                src_str = batch.src_str
+                
+            
+                sent_scores, mask, sentences_rep= self.model(src, segs, clss, mask, mask_cls)
 
-                                sent_scores = sent_scores + mask.float()
-                                sent_scores = sent_scores.cpu().data.numpy()
-                                selected_ids = np.argsort(-sent_scores, 1)
-                            # selected_ids = np.sort(selected_ids,1)
-                            for i, idx in enumerate(selected_ids):
-                                _pred = []
-                                try:
-                                    length_summary = len(np.where(labels[i].cpu().data.numpy()==1)[0])
-                                except:
-                                    length_summary =3
-                                # print(length_summary)
-                                # print(labels[i].cpu().data.numpy())
+    
+                # Computation true positive
+                #####################################################
+                scores = (sent_scores*mask.float()).cpu().data.numpy()
+                
 
-                                if (len(batch.src_str[i]) == 0):
-                                    continue
-                                for j in selected_ids[i][:len(batch.src_str[i])]:
-                                    if (j >= len(batch.src_str[i])):
-                                        continue
-                                    candidate = batch.src_str[i][j].strip()
-                                    # print(candidate)
-                                    if (self.args.block_trigram):
-                                        if (not _block_tri(candidate, _pred)):
-                                            _pred.append(candidate)
-                                    else:
-                                        _pred.append(candidate)
+                for i,label in enumerate(labels.cpu().data.numpy()):
+                    pos_label = np.where(label==1)
+                    # pos_labels.append(list(pos_label[0]))
+                    pos_score = np.argsort(scores[i])
 
-                                    if ((not cal_oracle) and (not self.args.recall_eval) and len(_pred) == length_summary):
-                                        break
+                    src = src_str[i]
+                    
+                    for pos in range(len(pos_label[0])+2):
+                        if (pos_score[-(pos+1)] in pos_label[0]):
+                            true_positives_margin+=1
 
-                                # print(len(_pred))
-                                if length_summary!=len(_pred):
-                                    print("Problem length summary")
+                    # for pos in range(len(pos_label[0])+4):
+                    #     if (pos_score[-(pos+1)] in pos_label[0]):
+                    #         true_positives_margin2+=1
 
-                                _pred = '<q>'.join(_pred)
-                                if (self.args.recall_eval):
-                                    _pred = ' '.join(_pred.split()[:len(batch.tgt_str[i].split())])
+                    pos_positives = pos_score[-len(pos_label[0]):]
+                    pos_groundtruth = pos_label[0]
+                    probas_fn = np.append(probas_fn,scores[i][np.setdiff1d(pos_groundtruth, pos_positives)],axis=0)
+                    
+                    
+                    for index in list(np.setdiff1d(pos_groundtruth, pos_positives)):
+                        sent_fn.append(src[index])
+                
+                    for pos in range(len(pos_label[0])):
+                        # if (pos_score[-(pos+1)] < list1[i]):
+                        #     count += 1
+                        if (pos_score[-(pos+1)] in pos_label[0]):
+                            true_positives+=1
+                            probas_tp = np.append(probas_tp,[scores[i][pos_score[-(pos+1)]]],axis=0)
+                            sent_tp.append(src[pos_score[-(pos+1)]])
+                        else:
+                            probas_fp = np.append(probas_fp,[scores[i][pos_score[-(pos+1)]]],axis=0)
+                            sent_fp.append(src[pos_score[-(pos+1)]])
 
-                                pred.append(_pred)
-                                gold.append(batch.tgt_str[i])
-                            #print(gold)
-                            #time.sleep(10)
+                    total_positives+=len(pos_label[0])
+                
+                #####################################################
+                
+                loss = self.loss(sent_scores, labels.float())
+                loss = (loss * mask.float()).sum()
+                batch_stats = Statistics(float(loss.cpu().data.numpy()), len(labels))
+                stats.update(batch_stats)
 
-                            for i in range(len(gold)):
-                                save_gold.write(str((gold[i].strip()).encode("utf-8")) + '\n')
-                            for i in range(len(pred)):
-                                save_pred.write(str((pred[i].strip()).encode("utf-8")) + '\n')
-                            save_source.write(str(src_txt) + '\n')
+            # print(pos_labels)
+            # print(count)
 
-        if (step != -1 and self.args.report_rouge):
-            rouges = test_rouge(self.args.temp_dir, can_path, gold_path)
-            logger.info('Rouges at step %d \n%s' % (step, rouge_results_to_str(rouges)))
-        self._report_step(0, step, valid_stats=stats)
+            # with open("list1.txt", "wb") as fp:
+            #     pickle.dump(pos_labels, fp)
 
-        return stats
+            print("true positives",true_positives)
+            print("true positives_margin2",true_positives_margin)
+            # print("true positives_margin4",true_positives_margin2)
+            print("total positives",total_positives)
+            # print("probas tp",probas_tp)
+            # print("probas fp",probas_fp)
+            # print("probas fn",probas_fn)
+            # print("sent_tp",len(sent_tp))
+            # print("sent_fp",len(sent_fp))
+            # print("sent_fn",len(sent_fn))
+
+            dict_data = {
+            "probas_tp": probas_tp,
+            "probas_fp": probas_fp,
+            "probas_fn": probas_fn,
+            "sent_tp": sent_tp,
+            "sent_fp": sent_fp,
+            "sent_fn": sent_fn
+            }
+            
+            loss = stats.xent()
+            if loss < self.init_loss:
+                # np.save('../logs/dict_data_'+str(loss)+'.npy', dict_data)
+                # if self.init_loss!= 100:
+                #     os.remove('../dict_data_'+str(self.init_loss)+'.npy') 
+                self.init_loss = loss
+
+            self._report_step(0, step, valid_stats=stats)
+
+            return stats, list_save_representations
+
+
 
     def _gradient_accumulation(self, true_batchs, normalization, total_stats,
                                report_stats, list_save_representations=None):
@@ -659,10 +473,6 @@ class Trainer(object):
 
 
             sent_scores, mask, sentences_rep = self.model(src, segs, clss, mask, mask_cls)
-
-            if self.args.save_data:
-                list_save_representations[0].append(sentences_rep.squeeze().detach().cpu().numpy())
-                list_save_representations[1].append(labels.squeeze().cpu().numpy())
 
             loss = self.loss(sent_scores, labels.float())
             loss = (loss * mask.float()).sum()
