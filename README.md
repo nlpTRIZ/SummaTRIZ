@@ -9,7 +9,7 @@ Google drive: https://drive.google.com/file/d/1FSDhlQHSBzq5WKJp4ZwnNiJCY22IqYre/
 ## 2) Preprocess your data
 
 Follow instructions in section Preprocessing:
-https://github.com/nlpguarino/Patent_preprocessing
+https://github.com/nlpSummaTRIZ/Patent_preprocessing
 
 ## 3) Uses
 
